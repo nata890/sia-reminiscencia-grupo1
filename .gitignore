@@ -1,0 +1,19 @@
+# Archivos del sistema operativo (macOS y Windows)
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Carpetas de editores de código (VS Code, IntelliJ, etc.)
+.vscode/
+.idea/
+
+# Archivos temporales o de pruebas locales
+*.log
+temp/
+
+# ¡MUY IMPORTANTE! 
+# Si creas un archivo temporal para guardar tu API Key mientras programas la conexión, 
+# agrégalo aquí para NUNCA subirlo a GitHub. Por ejemplo:
+config.js
+keys.js
+.env
