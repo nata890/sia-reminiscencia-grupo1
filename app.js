@@ -1,11 +1,20 @@
+// ========================================
+// CONFIGURACIÓN GENERAL
+// ========================================
+
 // URL oficial de la API de Groq compatible con el estándar OpenAI
-const API_URL = 'https://api.groq.com/openai/v1/chat/completions'; // 
+const API_URL = 'https://api.groq.com/openai/v1/chat/completions';
+
+// IMPORTANTE: Reemplazar "tu_api_key_aqui" con la clave real de Groq
+const API_KEY_INTEGRADA = ""; // CAMBIAR POR LA CLAVE REAL
+
+// Variable global para guardar la API Key actual
+let apiKeyActual = API_KEY_INTEGRADA;
 
 // --- ESTRATEGIA DE MEMORIA: SUMMARY BUFFER HYBRID ---
 
 // 1. Límite del Buffer (N)
 // Define cuántos mensajes recientes mantendremos intactos antes de comprimirlos.
-// Un número entre 6 y 10 es ideal para mantener inmediatez sin saturar al LLM.
 const LIMITE_BUFFER = 6; 
 
 // 2. Memoria a largo plazo (El Resumen)
@@ -17,11 +26,10 @@ let resumenHistorico = "";
 let bufferMensajes = []; 
 
 // 4. Prompt del Sistema
-// Aunque tu compañero del Rol 5 diseñará el prompt final con la personalidad exacta,
-// necesitamos definir esta variable base para armar nuestros paquetes de memoria.
+// Define el comportamiento del agente para reminiscencia guiada
 const promptSistema = {
     role: "system",
-    content: "Eres un agente social interactivo para adultos mayores. Tu objetivo es hacer reminiscencia guiada. Sé paciente, respetuoso y utiliza un tono cálido."
+    content: "Eres un agente social interactivo para adultos mayores (65+ años). Tu objetivo es hacer reminiscencia guiada ayudando a la persona a reconstruir y narrar momentos significativos de su historia de vida. Sé paciente, respetuoso y utiliza un tono cálido y empático. Haz preguntas abiertas sobre momentos especiales: infancia, familia, logros, viajes, amigos. Escucha con atención y ayuda a la persona a recordar detalles y emociones. Usa frases cortas y simples. Si la persona se siente triste o abrumada, ofrece apoyo emocional."
 };
 
 /**
@@ -174,5 +182,254 @@ async function enviarMensajeLLM(mensajeUsuario, apiKey, historialConversacion) {
 
     } catch (error) {
         console.error("Hubo un problema conectando con el LLM:", error);
+        throw error;
     }
 }
+
+// ========================================
+// PROCESAMIENTO DE STREAMING
+// ========================================
+
+/**
+ * Procesa el stream de datos de la respuesta del LLM
+ * @param {ReadableStreamDefaultReader} reader - El lector del stream
+ * @param {TextDecoder} decoder - El decodificador de texto
+ * @param {Function} callback - Función que se llama con cada fragmento
+ */
+async function procesarStreamingDatos(reader, decoder, callback) {
+    try {
+        let respuestaCompleta = "";
+        
+        while (true) {
+            const { done, value } = await reader.read();
+            if (done) break;
+
+            const chunk = decoder.decode(value, { stream: true });
+            const lineas = chunk.split('\n');
+
+            lineas.forEach(linea => {
+                if (linea.startsWith('data: ')) {
+                    const datosJSON = linea.substring(6).trim();
+                    if (datosJSON && datosJSON !== '[DONE]') {
+                        try {
+                            const datos = JSON.parse(datosJSON);
+                            const contenido = datos.choices?.[0]?.delta?.content || "";
+                            if (contenido) {
+                                respuestaCompleta += contenido;
+                                callback(respuestaCompleta); // Pasar la respuesta acumulada
+                            }
+                        } catch (e) {
+                            // Ignorar errores de parsing de líneas incompletas
+                        }
+                    }
+                }
+            });
+        }
+        
+        // Agregar la respuesta al buffer cuando termine el streaming
+        bufferMensajes.push({
+            role: "assistant",
+            content: respuestaCompleta
+        });
+
+    } catch (error) {
+        console.error("Error procesando stream:", error);
+        throw error;
+    }
+}
+
+// ========================================
+// EVENTOS Y GESTIÓN DE UI (ROL 2)
+// ========================================
+
+document.addEventListener("DOMContentLoaded", function() {
+    // Referencias a elementos del DOM
+    const aceptoEtica = document.getElementById("aceptoEtica");
+    const btnIniciarConversacion = document.getElementById("btnIniciarConversacion");
+    const inputApiKey = document.getElementById("inputApiKey");
+    const mensajeError = document.getElementById("mensajeError");
+    const btnVolver = document.getElementById("btnVolver");
+    const pantallaEtica = document.getElementById("pantallaEtica");
+    const pantallaChat = document.getElementById("pantallaChat");
+    const btnEnviar = document.getElementById("btnEnviar");
+    const inputMensaje = document.getElementById("inputMensaje");
+    const areaConversacion = document.getElementById("areaConversacion");
+    const estadoSistema = document.getElementById("estadoSistema");
+
+    // ---- PANTALLA DE ÉTICA ----
+
+    /**
+     * Habilita o deshabilita el botón de iniciar solo si acepta la ética
+     */
+    function actualizarEstadoBtnIniciar() {
+        const hayConsentimiento = aceptoEtica.checked;
+        btnIniciarConversacion.disabled = !hayConsentimiento;
+    }
+
+    aceptoEtica.addEventListener("change", actualizarEstadoBtnIniciar);
+
+    /**
+     * Maneja el inicio de la conversación
+     */
+    btnIniciarConversacion.addEventListener("click", function() {
+        // Cambiar de pantalla
+        pantallaEtica.classList.remove("activa");
+        pantallaChat.classList.add("activa");
+
+        // Limpiar campos
+        mensajeError.classList.remove("visible");
+        aceptoEtica.checked = false;
+        btnIniciarConversacion.disabled = true;
+
+        // Enviar primer mensaje del agente
+        enviarPrimerMensajeAgente();
+        
+        // Enfocar el campo de entrada
+        inputMensaje.focus();
+    });
+
+    /**
+     * Muestra un mensaje de error en la pantalla de ética
+     */
+    function mostrarError(mensaje) {
+        mensajeError.textContent = mensaje;
+        mensajeError.classList.add("visible");
+    }
+
+    // ---- PANTALLA DE CHAT ----
+
+    /**
+     * Vuelve a la pantalla de ética y cierra la sesión
+     */
+    btnVolver.addEventListener("click", function() {
+        if (confirm("¿Deseas terminar la sesión? Se perderá el historial de conversación.")) {
+            pantallaChat.classList.remove("activa");
+            pantallaEtica.classList.add("activa");
+            
+            // Limpiar conversación
+            areaConversacion.innerHTML = "";
+            bufferMensajes = [];
+            resumenHistorico = "";
+            apiKeyActual = "";
+            inputMensaje.value = "";
+            estadoSistema.textContent = "Listo para comenzar...";
+            estadoSistema.className = "estado-sistema";
+        }
+    });
+
+    /**
+     * Envía un mensaje del usuario al agente
+     */
+    function enviarMensajeUsuario() {
+        const mensaje = inputMensaje.value.trim();
+        
+        if (!mensaje) return;
+
+        // Mostrar mensaje del usuario
+        agregarMensajeAlChat("usuario", mensaje);
+        inputMensaje.value = "";
+        inputMensaje.focus();
+
+        // Deshabilitar entrada mientras se procesa
+        btnEnviar.disabled = true;
+        inputMensaje.disabled = true;
+
+        // Construir historial y enviar al LLM
+        const historial = construirHistorialHibrido(mensaje);
+        obtenerRespuestaDelAgente(mensaje, historial);
+    }
+
+    btnEnviar.addEventListener("click", enviarMensajeUsuario);
+    inputMensaje.addEventListener("keypress", function(event) {
+        if (event.key === "Enter") {
+            enviarMensajeUsuario();
+        }
+    });
+
+    /**
+     * Agrega un mensaje visualizado en el área de conversación
+     */
+    function agregarMensajeAlChat(remitente, contenido) {
+        const divMensaje = document.createElement("div");
+        divMensaje.className = remitente === "usuario" ? "mensaje mensaje-usuario" : "mensaje mensaje-agente";
+        
+        const etiqueta = document.createElement("div");
+        etiqueta.className = "etiqueta-remitente";
+        etiqueta.textContent = remitente === "usuario" ? "Tú" : "Agente";
+
+        const parrafo = document.createElement("p");
+        parrafo.textContent = contenido;
+
+        divMensaje.appendChild(etiqueta);
+        divMensaje.appendChild(parrafo);
+
+        areaConversacion.appendChild(divMensaje);
+        areaConversacion.scrollTop = areaConversacion.scrollHeight;
+    }
+
+    /**
+     * Envía el primer mensaje de bienvenida del agente
+     */
+    function enviarPrimerMensajeAgente() {
+        const mensajeBienvenida = "Hola, ¡bienvenido! Me alegra estar aquí para acompañarte en tu historia de vida. Cuéntame, ¿hay algún momento especial o significativo que te gustaría recordar hoy?";
+        agregarMensajeAlChat("agente", mensajeBienvenida);
+        
+        // Agregar el mensaje al buffer para continuidad
+        bufferMensajes.push({
+            role: "assistant",
+            content: mensajeBienvenida
+        });
+    }
+
+    /**
+     * Obtiene la respuesta del agente del LLM
+     */
+    async function obtenerRespuestaDelAgente(mensajeUsuario, historial) {
+        estadoSistema.textContent = "Procesando tu respuesta...";
+        estadoSistema.className = "estado-sistema procesando";
+
+        try {
+            const respuesta = await enviarMensajeLLM(mensajeUsuario, apiKeyActual, historial);
+            
+            if (respuesta && respuesta.reader) {
+                // Crear un contenedor temporal para el mensaje del agente
+                const divMensaje = document.createElement("div");
+                divMensaje.className = "mensaje mensaje-agente";
+                
+                const etiqueta = document.createElement("div");
+                etiqueta.className = "etiqueta-remitente";
+                etiqueta.textContent = "Agente";
+
+                const parrafo = document.createElement("p");
+                parrafo.textContent = "";
+
+                divMensaje.appendChild(etiqueta);
+                divMensaje.appendChild(parrafo);
+                areaConversacion.appendChild(divMensaje);
+
+                // Procesar el streaming
+                await procesarStreamingDatos(respuesta.reader, respuesta.decoder, (fragmento) => {
+                    parrafo.textContent = fragmento;
+                    areaConversacion.scrollTop = areaConversacion.scrollHeight;
+                });
+
+                // Actualizar resumen si el buffer está lleno
+                if (bufferMensajes.length >= LIMITE_BUFFER * 2) {
+                    const mensajesAComprimir = bufferMensajes.slice(0, LIMITE_BUFFER);
+                    bufferMensajes = bufferMensajes.slice(LIMITE_BUFFER);
+                    await comprimirMensajesEnResumen(mensajesAComprimir, apiKeyActual);
+                }
+            }
+        } catch (error) {
+            console.error("Error al procesar la respuesta del agente:", error);
+            estadoSistema.textContent = "Error: No se pudo procesar la respuesta. Intenta de nuevo.";
+            estadoSistema.className = "estado-sistema error";
+        } finally {
+            btnEnviar.disabled = false;
+            inputMensaje.disabled = false;
+            estadoSistema.textContent = "Listo. Cuéntame más...";
+            estadoSistema.className = "estado-sistema";
+            inputMensaje.focus();
+        }
+    }
+});

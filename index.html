@@ -3,12 +3,146 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Agente Social Interactivo - Grupo 1</title>
+    <meta name="description" content="Agente Social Interactivo para reminiscencia guiada en adultos mayores">
+    <title>Reminiscencia Guiada - Acompañamiento Conversacional</title>
+    <link rel="stylesheet" href="style.css">
 </head>
 <body>
-    <h1>Probando la conexión del Agente</h1>
-    <p>Abre la consola de herramientas de desarrollador para ver el resultado.</p>
+    <!-- PANTALLA INICIAL: ÉTICA E IA -->
+    <div id="pantallaEtica" class="pantalla activa" role="main">
+        <header class="header-etica">
+            <h1>Bienvenido</h1>
+            <p class="subtitulo">Acompañamiento en Reminiscencia Guiada</p>
+        </header>
 
+        <main class="contenedor-etica">
+            <!-- SECCIÓN 1: QUÉ ES ESTA APLICACIÓN -->
+            <section class="seccion-etica">
+                <h2>¿Qué es esta aplicación?</h2>
+                <p>
+                    Bienvenido a este espacio creado especialmente para usted. 
+                    Mi objetivo es guiarle en un viaje por sus recuerdos para reconstruir juntos los mejores momentos de su vida. 
+                    Para su total tranquilidad y transparencia, le informo que soy un asistente de Inteligencia Artificial; 
+                    no soy un ser humano real ni un terapeuta profesional. Soy una herramienta tecnológica diseñada para escucharle con paciencia y acompañarle de manera amigable en sus narraciones. 
+                    ¡Presione continuar para empezar nuestra primera charla!
+                </p>
+            </section>
+
+            <!-- SECCIÓN 2: PRIVACIDAD Y SEGURIDAD -->
+            <section class="seccion-etica">
+                <h2>Tu privacidad es importante</h2>
+                <p>
+                    Los datos que compartas en esta conversación se procesan a través de un servicio de inteligencia artificial 
+                    en línea. Tu información es tratada con respeto y confidencialidad, de acuerdo con estándares de protección 
+                    de datos.
+                </p>
+                <p>
+                    <strong>Recuerda:</strong> Puedes pausar la conversación en cualquier momento.
+                </p>
+            </section>
+
+            <!-- SECCIÓN 3: CONSENTIMIENTO Y ACEPTACIÓN -->
+            <section class="seccion-etica seccion-consentimiento">
+                <h2>Acepto participar</h2>
+                <div class="cuadro-consentimiento">
+                    <input type="checkbox" id="aceptoEtica" name="aceptoEtica" aria-label="Acepto los términos de privacidad y uso">
+                    <label for="aceptoEtica">
+                        Entiendo que esta es una aplicación de inteligencia artificial y acepto participar en esta sesión 
+                        de reminiscencia guiada.
+                    </label>
+                </div>
+            </section>
+
+            <!-- BOTÓN DE INICIO -->
+            <div class="contenedor-boton">
+                <button 
+                    id="btnIniciarConversacion" 
+                    class="boton-principal" 
+                    disabled
+                    aria-label="Iniciar la conversación de reminiscencia"
+                >
+                    Iniciar Conversación
+                </button>
+                <p id="mensajeError" class="mensaje-error"></p>
+            </div>
+        </main>
+
+        <footer class="footer-etica">
+            <p>Desarrollado por Grupo 1 - Agentes Inteligentes 2026</p>
+        </footer>
+    </div>
+
+    <!-- PANTALLA PRINCIPAL: CHAT E INTERACCIÓN -->
+    <div id="pantallaChat" class="pantalla" role="main">
+        <header class="header-chat">
+            <h1>Reminiscencia Guiada</h1>
+            <button id="btnVolver" class="boton-secundario" aria-label="Volver a la pantalla de inicio">
+                Cerrar Sesión
+            </button>
+        </header>
+
+        <main class="contenedor-chat">
+            <!-- INSTRUCCIONES INICIALES -->
+            <div id="instrucciones" class="seccion-instrucciones">
+                <h2>¿Cómo funciona?</h2>
+                <p>El agente te hará preguntas sobre momentos importantes de tu vida.</p>
+                <p>Responde con libertad y tranquilidad. Puedes hablar o escribir.</p>
+            </div>
+
+            <!-- ÁREA DE CONVERSACIÓN -->
+            <div id="areaConversacion" class="area-conversacion" role="log" aria-live="polite" aria-label="Historial de conversación">
+                <!-- Los mensajes se insertarán aquí dinámicamente -->
+            </div>
+
+            <!-- CONTROLES DE ENTRADA -->
+            <div class="contenedor-entrada">
+                <div class="grupo-entrada">
+                    <label for="inputMensaje" class="label-oculto">Tu respuesta:</label>
+                    <input 
+                        type="text" 
+                        id="inputMensaje" 
+                        placeholder="Escribe tu respuesta aquí o habla al micrófono..."
+                        aria-label="Campo de texto para escribir tu respuesta"
+                    >
+                </div>
+
+                <div class="botones-accion">
+                    <button 
+                        id="btnEnviar" 
+                        class="boton-enviar"
+                        aria-label="Enviar mensaje"
+                    >
+                        Enviar
+                    </button>
+                    <button 
+                        id="btnMicrófono" 
+                        class="boton-micrófono"
+                        aria-label="Activar micrófono para hablar"
+                    >
+                        🎤 Hablar
+                    </button>
+                    <button 
+                        id="btnPausa" 
+                        class="boton-pausa"
+                        aria-label="Pausar la conversación"
+                    >
+                        ⏸ Pausa
+                    </button>
+                </div>
+            </div>
+
+            <!-- ESTADO DEL SISTEMA -->
+            <div id="estadoSistema" class="estado-sistema" role="status" aria-live="assertive" aria-label="Estado actual del sistema">
+                <p>Listo para comenzar...</p>
+            </div>
+        </main>
+
+        <footer class="footer-chat">
+            <p>Sesión privada y confidencial • Puedes pausar en cualquier momento</p>
+        </footer>
+    </div>
+
+    <!-- SCRIPTS -->
     <script src="app.js"></script>
 </body>
 </html>
