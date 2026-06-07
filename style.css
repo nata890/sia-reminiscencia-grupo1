@@ -1212,6 +1212,9 @@ label {
     word-wrap: break-word;
     margin-top: 10px;
     margin-bottom: 10px;
+    max-height: 150px; /* Puedes ajustar este número (ej. 120px o 200px) según como se vea mejor en tu pantalla */
+    overflow-y: auto; 
+    word-wrap: break-word;
 }
 
 /* --- BOTONES DE PRUEBA --- */

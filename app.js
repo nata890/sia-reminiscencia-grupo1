@@ -606,11 +606,15 @@ document.addEventListener("DOMContentLoaded", function () {
                     areaConversacion.scrollTop = areaConversacion.scrollHeight;
                     if (subtitulosAgente) {
                         subtitulosAgente.textContent = fragmento;
-                        subtitulosAgente.scrollTop = subtitulosAgente.scrollHeight;
                     }
                 });
 
                 hablarTexto(parrafo.textContent);
+
+                // --- NUEVO: Cambio automático de emoción (Rol 1) ---
+                const emocionDetectada = detectarEmocionTexto(parrafo.textContent);
+                cambiarEmocion(emocionDetectada);
+                // ---------------------------------------------------
 
                 if (bufferMensajes.length >= LIMITE_BUFFER * 2) {
                     const mensajesAComprimir = bufferMensajes.slice(0, LIMITE_BUFFER);
@@ -756,4 +760,24 @@ function cambiarEmocion(estado) {
             botones[j].classList.add('activo');
         }
     }
+}
+
+
+function detectarEmocionTexto(texto) {
+    const textoMin = texto.toLowerCase();
+
+    // 1. Detectar alegría
+    const palabrasAlegres = ['alegría', 'feliz', 'felicidad', 'maravilloso', 'increíble', 'celebra', 'logro', 'orgullo', 'bello', 'hermoso', 'lindo', 'fantástico', 'excelente', 'especial', 'me alegra', 'gusto', 'encanta'];
+    if (palabrasAlegres.some(p => textoMin.includes(p))) return 'alegre';
+
+    // 2. Detectar tristeza o empatía profunda
+    const palabrasTristes = ['triste', 'tristeza', 'extraño', 'extrañar', 'llorar', 'lloré', 'perdí', 'perdiste', 'partió', 'murió', 'falleci', 'duelo', 'dolor', 'difícil', 'lamento', 'pena', 'lo siento', 'soledad', 'nostalgia'];
+    if (palabrasTristes.some(p => textoMin.includes(p))) return 'triste';
+
+    // 3. Detectar sorpresa o asombro
+    const palabrasSorpresa = ['sorpresa', 'sorprendente', 'guau', 'wow', 'no me lo esperaba', 'asombroso', 'curioso', 'inesperado', 'de verdad', 'en serio', 'vaya'];
+    if (palabrasSorpresa.some(p => textoMin.includes(p))) return 'sorprendido';
+
+    // 4. Si no encuentra ninguna palabra clave fuerte, se mantiene neutral
+    return 'neutral';
 }
