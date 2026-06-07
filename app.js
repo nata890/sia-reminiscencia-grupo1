@@ -358,6 +358,7 @@ async function procesarStreamingDatosJSON(reader, decoder, callback, callbackEmo
 
 document.addEventListener("DOMContentLoaded", function () {
     const aceptoEtica = document.getElementById("aceptoEtica");
+    const inputApiKey = document.getElementById("inputApiKey");
     const inputNombre = document.getElementById("inputNombre");
     const btnIniciarConversacion = document.getElementById("btnIniciarConversacion");
     const mensajeError = document.getElementById("mensajeError");
@@ -373,12 +374,23 @@ document.addEventListener("DOMContentLoaded", function () {
     // ---- PANTALLA DE ÉTICA ----
 
     function actualizarEstadoBtnIniciar() {
-        btnIniciarConversacion.disabled = !aceptoEtica.checked;
+        const tieneApiKey = inputApiKey.value.trim() !== "";
+        btnIniciarConversacion.disabled = !(aceptoEtica.checked && tieneApiKey);
     }
 
     aceptoEtica.addEventListener("change", actualizarEstadoBtnIniciar);
+    inputApiKey.addEventListener("input", actualizarEstadoBtnIniciar);
 
     btnIniciarConversacion.addEventListener("click", function () {
+        // Capturar API Key ingresada
+        var apiKeyIngresada = inputApiKey.value.trim();
+        if (apiKeyIngresada !== "") {
+            apiKeyActual = apiKeyIngresada;
+        } else {
+            mostrarError("Por favor, ingresa una clave API válida.");
+            return;
+        }
+
         // Capturar nombre ingresado
         var nombreIngresado = inputNombre.value.trim();
         if (nombreIngresado !== "") {
@@ -430,7 +442,10 @@ document.addEventListener("DOMContentLoaded", function () {
             bufferMensajes = [];
             resumenHistorico = "";
             inputMensaje.value = "";
+            inputApiKey.value = "";
+            inputNombre.value = "";
             nombreUsuario = "Don/Doña";
+            apiKeyActual = API_KEY_INTEGRADA;
             estadoSistema.textContent = "Listo para comenzar...";
             estadoSistema.className = "estado-sistema";
         }

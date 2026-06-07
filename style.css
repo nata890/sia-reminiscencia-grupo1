@@ -346,6 +346,57 @@ label {
     box-shadow: 0 0 0 4px rgba(198, 147, 32, 0.2);
 }
 
+.cuadro-apikey {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    padding: 20px;
+    border: 3px solid var(--color-borde);
+    border-radius: 8px;
+    background-color: #F5F4F0;
+}
+
+.cuadro-apikey label {
+    margin-bottom: 0;
+    font-size: 24px;
+}
+
+.cuadro-apikey a {
+    color: var(--color-acento);
+    text-decoration: underline;
+    font-weight: bold;
+}
+
+.cuadro-apikey a:hover {
+    text-decoration: none;
+}
+
+.input-apikey {
+    font-family: "Georgia", "Times New Roman", serif;
+    font-size: 24px;
+    padding: 16px;
+    border: 3px solid var(--color-borde);
+    border-radius: 8px;
+    width: 100%;
+    line-height: 1.6;
+    color: var(--color-texto);
+    background-color: var(--color-fondo);
+    transition: border-color 0.3s ease, box-shadow 0.3s ease;
+    letter-spacing: 0.1em;
+}
+
+.input-apikey:focus {
+    outline: none;
+    border-color: var(--color-acento);
+    box-shadow: 0 0 0 4px rgba(198, 147, 32, 0.2);
+}
+
+.cuadro-apikey small {
+    font-size: 18px;
+    color: #666666;
+    font-style: italic;
+}
+
 /* ============================================
    PANTALLA 1: BLOQUE DE ÉTICA
    ============================================ */
