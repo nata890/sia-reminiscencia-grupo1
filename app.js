@@ -181,6 +181,7 @@ document.addEventListener("DOMContentLoaded", function () {
     const inputMensaje = document.getElementById("inputMensaje");
     const areaConversacion = document.getElementById("areaConversacion");
     const estadoSistema = document.getElementById("estadoSistema");
+    const subtitulosAgente = document.getElementById("subtitulos-agente");
 
     // ---- PANTALLA DE ÉTICA ----
 
@@ -292,7 +293,7 @@ document.addEventListener("DOMContentLoaded", function () {
         reconocimiento.interimResults = true;
         reconocimiento.continuous = true; // No se corta por pausas largas
 
-        reconocimiento.onstart = function() {
+        reconocimiento.onstart = function () {
             inputMensaje.value = ''; // Limpiar input al iniciar
             estadoSistema.textContent = "Escuchando... (Habla ahora, me detengo solo cuando termines)";
             estadoSistema.className = "estado-sistema procesando";
@@ -300,7 +301,7 @@ document.addEventListener("DOMContentLoaded", function () {
             btnMicrofono.textContent = "🛑 Parar grabación";
         };
 
-        reconocimiento.onresult = function(event) {
+        reconocimiento.onresult = function (event) {
             let textoFinal = '';
 
             for (let i = event.resultIndex; i < event.results.length; ++i) {
@@ -319,13 +320,13 @@ document.addEventListener("DOMContentLoaded", function () {
                 // Cada vez que llega texto final, reiniciar el temporizador de silencio.
                 // Si pasan 3 segundos sin más palabras, se detiene automáticamente.
                 clearTimeout(silenceTimer);
-                silenceTimer = setTimeout(function() {
+                silenceTimer = setTimeout(function () {
                     reconocimiento.stop();
                 }, TIEMPO_SILENCIO_MS);
             }
         };
 
-        reconocimiento.onend = function() {
+        reconocimiento.onend = function () {
             clearTimeout(silenceTimer);
             btnMicrofono.classList.remove("activo");
             btnMicrofono.textContent = "🎤 Hablar";
@@ -348,7 +349,7 @@ document.addEventListener("DOMContentLoaded", function () {
             }
         };
 
-        reconocimiento.onerror = function(event) {
+        reconocimiento.onerror = function (event) {
             clearTimeout(silenceTimer);
             console.error("Error en reconocimiento de voz: ", event.error);
             if (event.error !== 'no-speech') {
@@ -359,7 +360,7 @@ document.addEventListener("DOMContentLoaded", function () {
             btnMicrofono.textContent = "🎤 Hablar";
         };
 
-        btnMicrofono.addEventListener("click", function() {
+        btnMicrofono.addEventListener("click", function () {
             if (btnMicrofono.classList.contains("activo")) {
                 clearTimeout(silenceTimer);
                 reconocimiento.stop(); // Detiene manualmente
@@ -405,8 +406,8 @@ document.addEventListener("DOMContentLoaded", function () {
 
     // Voz principal: masculina, cálida, acento latinoamericano neutro
     // Apropiada para el avatar y para adultos mayores colombianos.
-    const VOZ_PRINCIPAL  = "Spanish Latin American Male";
-    const VOZ_FALLBACK   = "Spanish Latin American Female"; // más cálida si la masculina no carga
+    const VOZ_PRINCIPAL = "Spanish Latin American Male";
+    const VOZ_FALLBACK = "Spanish Latin American Female"; // más cálida si la masculina no carga
 
     // Comprueba si ResponsiveVoice está disponible y listo
     function responsiveVoiceDisponible() {
@@ -469,16 +470,16 @@ document.addEventListener("DOMContentLoaded", function () {
             const vozElegida = responsiveVoice.isPlaying() ? VOZ_FALLBACK : VOZ_PRINCIPAL;
 
             responsiveVoice.speak(texto, VOZ_PRINCIPAL, {
-                pitch:   parametrosVoz.pitch,  // 0-2, 1 = normal
-                rate:    parametrosVoz.rate,   // 0-1.5, valores < 1 = más lento
-                volume:  1,
-                onstart: function() {
+                pitch: parametrosVoz.pitch,  // 0-2, 1 = normal
+                rate: parametrosVoz.rate,   // 0-1.5, valores < 1 = más lento
+                volume: 1,
+                onstart: function () {
                     if (typeof empezarAHablar === 'function') empezarAHablar();
                 },
-                onend: function() {
+                onend: function () {
                     if (typeof dejarDeHablar === 'function') dejarDeHablar();
                 },
-                onerror: function() {
+                onerror: function () {
                     if (typeof dejarDeHablar === 'function') dejarDeHablar();
                     // Si ResponsiveVoice falla, intentar con Web Speech API
                     hablarTextoFallback(texto, parametrosVoz);
@@ -503,11 +504,11 @@ document.addEventListener("DOMContentLoaded", function () {
         const vozFallback = voces.find(v => v.lang.includes('es-CO') || v.lang.includes('es-MX') || v.lang.includes('es'));
         if (vozFallback) utterance.voice = vozFallback;
 
-        utterance.rate  = parametrosVoz.rate;
+        utterance.rate = parametrosVoz.rate;
         utterance.pitch = parametrosVoz.pitch;
-        utterance.onstart = function() { if (typeof empezarAHablar === 'function') empezarAHablar(); };
-        utterance.onend   = function() { if (typeof dejarDeHablar === 'function') dejarDeHablar(); };
-        utterance.onerror = function() { if (typeof dejarDeHablar === 'function') dejarDeHablar(); };
+        utterance.onstart = function () { if (typeof empezarAHablar === 'function') empezarAHablar(); };
+        utterance.onend = function () { if (typeof dejarDeHablar === 'function') dejarDeHablar(); };
+        utterance.onerror = function () { if (typeof dejarDeHablar === 'function') dejarDeHablar(); };
         window.speechSynthesis.speak(utterance);
     }
 
@@ -515,7 +516,7 @@ document.addEventListener("DOMContentLoaded", function () {
     // Compatible con ResponsiveVoice y con el fallback de Web Speech API
     const btnPausa = document.getElementById("btnPausa");
     if (btnPausa) {
-        btnPausa.addEventListener("click", function() {
+        btnPausa.addEventListener("click", function () {
             if (responsiveVoiceDisponible()) {
                 // ResponsiveVoice
                 if (responsiveVoice.isPaused()) {
@@ -541,8 +542,8 @@ document.addEventListener("DOMContentLoaded", function () {
     // ========================================
     // ROL 3: BOTONES DE RESPUESTA RÁPIDA
     // ========================================
-    document.querySelectorAll(".boton-rapido").forEach(function(btn) {
-        btn.addEventListener("click", function() {
+    document.querySelectorAll(".boton-rapido").forEach(function (btn) {
+        btn.addEventListener("click", function () {
             const texto = btn.getAttribute("data-respuesta");
             if (!texto) return;
             // Detener TTS (ResponsiveVoice o fallback Web Speech API)
@@ -570,13 +571,17 @@ document.addEventListener("DOMContentLoaded", function () {
             role: "assistant",
             content: saludo
         });
-        
+
         hablarTexto(saludo);
     }
 
     async function obtenerRespuestaDelAgente(mensajeUsuario, historial) {
         estadoSistema.textContent = "Procesando tu respuesta...";
         estadoSistema.className = "estado-sistema procesando";
+
+        if (subtitulosAgente) {
+            subtitulosAgente.textContent = "Don Mateo está pensando...";
+        }
 
         try {
             const respuesta = await enviarMensajeLLM(mensajeUsuario, apiKeyActual, historial);
@@ -599,6 +604,10 @@ document.addEventListener("DOMContentLoaded", function () {
                 await procesarStreamingDatos(respuesta.reader, respuesta.decoder, (fragmento) => {
                     parrafo.textContent = fragmento;
                     areaConversacion.scrollTop = areaConversacion.scrollHeight;
+                    if (subtitulosAgente) {
+                        subtitulosAgente.textContent = fragmento;
+                        subtitulosAgente.scrollTop = subtitulosAgente.scrollHeight;
+                    }
                 });
 
                 hablarTexto(parrafo.textContent);
