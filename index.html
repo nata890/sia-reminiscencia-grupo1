@@ -6,6 +6,8 @@
     <meta name="description" content="Agente Social Interactivo para reminiscencia guiada en adultos mayores">
     <title>Reminiscencia Guiada - Acompañamiento Conversacional</title>
     <link rel="stylesheet" href="style.css">
+    <!-- ROL 3: ResponsiveVoice — voces cálidas en español latinoamericano -->
+    <script src="https://code.responsivevoice.org/responsivevoice.js?key=FREE"></script>
 </head>
 <body>
 
@@ -166,10 +168,23 @@
                 </div>
             </div>
 
+            <!-- ROL 3: Botones de Respuesta Rápida -->
+            <div id="respuestas-rapidas" class="respuestas-rapidas">
+                <span class="etiqueta-respuestas">Respuestas rápidas:</span>
+                <div class="grupo-respuestas-rapidas">
+                    <button class="boton-rapido" data-respuesta="Sí" aria-label="Respuesta rápida: Sí">👍 Sí</button>
+                    <button class="boton-rapido" data-respuesta="No" aria-label="Respuesta rápida: No">👎 No</button>
+                    <button class="boton-rapido" data-respuesta="Cuéntame más" aria-label="Respuesta rápida: Cuéntame más">💬 Cuéntame más</button>
+                    <button class="boton-rapido" data-respuesta="Me alegra recordarlo" aria-label="Respuesta rápida: Me alegra recordarlo">😊 Me alegra recordarlo</button>
+                    <button class="boton-rapido" data-respuesta="Eso fue muy especial para mí" aria-label="Respuesta rápida: Eso fue muy especial para mí">❤️ Fue muy especial</button>
+                </div>
+            </div>
+
             <div id="estadoSistema" class="estado-sistema" role="status" aria-live="assertive"
                 aria-label="Estado actual del sistema">
                 <p>Listo para comenzar...</p>
             </div>
+
 
             <footer class="footer-chat">
                 <p>Sesión privada y confidencial • Puedes pausar en cualquier momento</p>

@@ -260,6 +260,7 @@ document.addEventListener("DOMContentLoaded", function () {
 
         agregarMensajeAlChat("usuario", mensaje);
         inputMensaje.value = "";
+        btnEnviar.classList.remove("resaltado-listo");
         inputMensaje.focus();
 
         btnEnviar.disabled = true;
@@ -275,6 +276,108 @@ document.addEventListener("DOMContentLoaded", function () {
             enviarMensajeUsuario();
         }
     });
+
+    // ========================================
+    // ROL 3: RECONOCIMIENTO DE VOZ (Speech-to-Text)
+    // ========================================
+    const btnMicrofono = document.getElementById("btnMicrofono");
+    let reconocimiento;
+    let silenceTimer = null;
+    const TIEMPO_SILENCIO_MS = 3000; // 3 s de pausa → suficiente para adultos mayores
+
+    if ('webkitSpeechRecognition' in window || 'SpeechRecognition' in window) {
+        const SpeechRecognitionClass = window.SpeechRecognition || window.webkitSpeechRecognition;
+        reconocimiento = new SpeechRecognitionClass();
+        reconocimiento.lang = 'es-CO';
+        reconocimiento.interimResults = true;
+        reconocimiento.continuous = true; // No se corta por pausas largas
+
+        reconocimiento.onstart = function() {
+            inputMensaje.value = ''; // Limpiar input al iniciar
+            estadoSistema.textContent = "Escuchando... (Habla ahora, me detengo solo cuando termines)";
+            estadoSistema.className = "estado-sistema procesando";
+            btnMicrofono.classList.add("activo");
+            btnMicrofono.textContent = "🛑 Parar grabación";
+        };
+
+        reconocimiento.onresult = function(event) {
+            let textoFinal = '';
+
+            for (let i = event.resultIndex; i < event.results.length; ++i) {
+                if (event.results[i].isFinal) {
+                    textoFinal += event.results[i][0].transcript;
+                }
+            }
+
+            if (textoFinal) {
+                // Acumular texto en el input
+                if (inputMensaje.value && !inputMensaje.value.endsWith(' ')) {
+                    inputMensaje.value += ' ';
+                }
+                inputMensaje.value += textoFinal;
+
+                // Cada vez que llega texto final, reiniciar el temporizador de silencio.
+                // Si pasan 3 segundos sin más palabras, se detiene automáticamente.
+                clearTimeout(silenceTimer);
+                silenceTimer = setTimeout(function() {
+                    reconocimiento.stop();
+                }, TIEMPO_SILENCIO_MS);
+            }
+        };
+
+        reconocimiento.onend = function() {
+            clearTimeout(silenceTimer);
+            btnMicrofono.classList.remove("activo");
+            btnMicrofono.textContent = "🎤 Hablar";
+            btnEnviar.classList.remove("resaltado-listo");
+
+            // Auto-enviar directamente al agente si hay texto capturado
+            const textoCapturado = inputMensaje.value.trim();
+            if (textoCapturado) {
+                inputMensaje.value = '';
+                estadoSistema.textContent = "Enviando tu mensaje...";
+                estadoSistema.className = "estado-sistema procesando";
+                agregarMensajeAlChat("usuario", textoCapturado);
+                btnEnviar.disabled = true;
+                inputMensaje.disabled = true;
+                const historial = construirHistorialHibrido(textoCapturado);
+                obtenerRespuestaDelAgente(textoCapturado, historial);
+            } else {
+                estadoSistema.textContent = "No escuché nada. Intenta de nuevo.";
+                estadoSistema.className = "estado-sistema";
+            }
+        };
+
+        reconocimiento.onerror = function(event) {
+            clearTimeout(silenceTimer);
+            console.error("Error en reconocimiento de voz: ", event.error);
+            if (event.error !== 'no-speech') {
+                estadoSistema.textContent = "Error al escuchar: " + event.error;
+                estadoSistema.className = "estado-sistema error";
+            }
+            btnMicrofono.classList.remove("activo");
+            btnMicrofono.textContent = "🎤 Hablar";
+        };
+
+        btnMicrofono.addEventListener("click", function() {
+            if (btnMicrofono.classList.contains("activo")) {
+                clearTimeout(silenceTimer);
+                reconocimiento.stop(); // Detiene manualmente
+            } else {
+                // Silenciar TTS (ResponsiveVoice o fallback Web Speech API)
+                if (responsiveVoiceDisponible()) {
+                    responsiveVoice.cancel();
+                } else if ('speechSynthesis' in window) {
+                    window.speechSynthesis.cancel();
+                }
+                reconocimiento.start();
+            }
+        });
+    } else {
+        btnMicrofono.style.display = 'none';
+        console.warn("Reconocimiento de voz no soportado en este navegador.");
+    }
+
 
     function agregarMensajeAlChat(remitente, contenido) {
         const divMensaje = document.createElement("div");
@@ -294,6 +397,169 @@ document.addEventListener("DOMContentLoaded", function () {
         areaConversacion.scrollTop = areaConversacion.scrollHeight;
     }
 
+    // ========================================
+    // ROL 3: SÍNTESIS DE VOZ (Text-to-Speech)
+    // Usa ResponsiveVoice.js para voces cálidas latinoamericanas.
+    // Fallback a Web Speech API si ResponsiveVoice no está disponible.
+    // ========================================
+
+    // Voz principal: masculina, cálida, acento latinoamericano neutro
+    // Apropiada para el avatar y para adultos mayores colombianos.
+    const VOZ_PRINCIPAL  = "Spanish Latin American Male";
+    const VOZ_FALLBACK   = "Spanish Latin American Female"; // más cálida si la masculina no carga
+
+    // Comprueba si ResponsiveVoice está disponible y listo
+    function responsiveVoiceDisponible() {
+        return (typeof responsiveVoice !== 'undefined') && responsiveVoice.voiceSupport();
+    }
+
+    // ========================================
+    // ROL 3: CAPACIDAD ADAPTATIVA DE VOZ
+    // Analiza el texto del agente y ajusta rate/pitch según el contenido emocional
+    // ========================================
+    function analizarRitmoVoz(texto) {
+        const textoMin = texto.toLowerCase();
+
+        // Señales de tristeza o dolor → voz muy pausada y suave
+        const palabrasTristeza = ['triste', 'tristeza', 'extraño', 'extrañar', 'llorar', 'lloré',
+            'perdí', 'perdiste', 'partió', 'murió', 'falleci', 'duelo', 'dolor',
+            'difícil', 'lamento', 'pena', 'lo siento'];
+        if (palabrasTristeza.some(p => textoMin.includes(p))) {
+            return { rate: 0.72, pitch: 0.78 };
+        }
+
+        // Señales de alegría o celebración → voz un poco más viva
+        const palabrasAlegria = ['alegría', 'feliz', 'felicidad', 'maravilloso', 'increíble',
+            'celebra', 'festeja', 'logro', 'orgullo', 'bello', 'hermoso',
+            'qué lindo', 'fantástico', 'qué bueno', 'excelente'];
+        if (palabrasAlegria.some(p => textoMin.includes(p))) {
+            return { rate: 0.92, pitch: 0.90 };
+        }
+
+        // Señales de confusión o dificultad para recordar → voz más lenta y clara
+        const palabrasConfusion = ['no recuerda', 'no recuerdo', 'olvidé', 'olvidado', 'confuso',
+            'tómese su tiempo', 'tome su tiempo', 'no se preocupe', 'tranquilo'];
+        if (palabrasConfusion.some(p => textoMin.includes(p))) {
+            return { rate: 0.75, pitch: 0.82 };
+        }
+
+        // Señales de nostalgia o recuerdo importante → cálido y pausado
+        const palabrasNostalgia = ['recuerdo', 'recuerda', 'aquellos tiempos', 'en aquella época',
+            'cuando era', 'de niño', 'de joven', 'juventud', 'infancia', 'años atrás'];
+        if (palabrasNostalgia.some(p => textoMin.includes(p))) {
+            return { rate: 0.80, pitch: 0.85 };
+        }
+
+        // Tono por defecto: pausado y respetuoso
+        return { rate: 0.85, pitch: 0.85 };
+    }
+
+    function hablarTexto(texto) {
+        // Aplicar ritmo adaptativo según el contenido emocional del texto
+        const parametrosVoz = analizarRitmoVoz(texto);
+
+        if (responsiveVoiceDisponible()) {
+            // ── RUTA PRINCIPAL: ResponsiveVoice ──────────────────────────────
+            // Cancelar cualquier audio previo antes de hablar
+            responsiveVoice.cancel();
+
+            // Elegir voz: masculina latinoamericana cálida, acorde al avatar y a la población
+            // ResponsiveVoice normaliza el rate en escala 0-1.5 (1 = normal)
+            // Nuestros valores adaptativos (0.72-0.92) ya están bien calibrados
+            const vozElegida = responsiveVoice.isPlaying() ? VOZ_FALLBACK : VOZ_PRINCIPAL;
+
+            responsiveVoice.speak(texto, VOZ_PRINCIPAL, {
+                pitch:   parametrosVoz.pitch,  // 0-2, 1 = normal
+                rate:    parametrosVoz.rate,   // 0-1.5, valores < 1 = más lento
+                volume:  1,
+                onstart: function() {
+                    if (typeof empezarAHablar === 'function') empezarAHablar();
+                },
+                onend: function() {
+                    if (typeof dejarDeHablar === 'function') dejarDeHablar();
+                },
+                onerror: function() {
+                    if (typeof dejarDeHablar === 'function') dejarDeHablar();
+                    // Si ResponsiveVoice falla, intentar con Web Speech API
+                    hablarTextoFallback(texto, parametrosVoz);
+                }
+            });
+
+        } else {
+            // ── RUTA FALLBACK: Web Speech API nativa ────────────────────────
+            hablarTextoFallback(texto, parametrosVoz);
+        }
+    }
+
+    // Fallback con Web Speech API en caso de que ResponsiveVoice no esté disponible
+    function hablarTextoFallback(texto, parametrosVoz) {
+        if (!('speechSynthesis' in window)) return;
+        window.speechSynthesis.cancel();
+
+        const utterance = new SpeechSynthesisUtterance(texto);
+        utterance.lang = 'es-CO';
+
+        const voces = window.speechSynthesis.getVoices();
+        const vozFallback = voces.find(v => v.lang.includes('es-CO') || v.lang.includes('es-MX') || v.lang.includes('es'));
+        if (vozFallback) utterance.voice = vozFallback;
+
+        utterance.rate  = parametrosVoz.rate;
+        utterance.pitch = parametrosVoz.pitch;
+        utterance.onstart = function() { if (typeof empezarAHablar === 'function') empezarAHablar(); };
+        utterance.onend   = function() { if (typeof dejarDeHablar === 'function') dejarDeHablar(); };
+        utterance.onerror = function() { if (typeof dejarDeHablar === 'function') dejarDeHablar(); };
+        window.speechSynthesis.speak(utterance);
+    }
+
+    // Lógica para el botón de pausa (Pausar/Reanudar voz)
+    // Compatible con ResponsiveVoice y con el fallback de Web Speech API
+    const btnPausa = document.getElementById("btnPausa");
+    if (btnPausa) {
+        btnPausa.addEventListener("click", function() {
+            if (responsiveVoiceDisponible()) {
+                // ResponsiveVoice
+                if (responsiveVoice.isPaused()) {
+                    responsiveVoice.resume();
+                    btnPausa.textContent = "⏸ Pausa";
+                } else if (responsiveVoice.isPlaying()) {
+                    responsiveVoice.pause();
+                    btnPausa.textContent = "▶ Reanudar";
+                }
+            } else if ('speechSynthesis' in window) {
+                // Fallback Web Speech API
+                if (window.speechSynthesis.paused) {
+                    window.speechSynthesis.resume();
+                    btnPausa.textContent = "⏸ Pausa";
+                } else if (window.speechSynthesis.speaking) {
+                    window.speechSynthesis.pause();
+                    btnPausa.textContent = "▶ Reanudar";
+                }
+            }
+        });
+    }
+
+    // ========================================
+    // ROL 3: BOTONES DE RESPUESTA RÁPIDA
+    // ========================================
+    document.querySelectorAll(".boton-rapido").forEach(function(btn) {
+        btn.addEventListener("click", function() {
+            const texto = btn.getAttribute("data-respuesta");
+            if (!texto) return;
+            // Detener TTS (ResponsiveVoice o fallback Web Speech API)
+            if (responsiveVoiceDisponible()) {
+                responsiveVoice.cancel();
+            } else if ('speechSynthesis' in window) {
+                window.speechSynthesis.cancel();
+            }
+            // Enviar directamente como si el usuario lo hubiera escrito
+            agregarMensajeAlChat("usuario", texto);
+            btnEnviar.disabled = true;
+            inputMensaje.disabled = true;
+            const historial = construirHistorialHibrido(texto);
+            obtenerRespuestaDelAgente(texto, historial);
+        });
+    });
+
     function enviarPrimerMensajeAgente() {
         var saludo = "Hola " + nombreUsuario + ", ¡bienvenido/a! Me alegra estar aquí para acompañarle " +
             "en su historia de vida. Cuénteme, " + nombreUsuario + ", ¿hay algún momento especial " +
@@ -304,6 +570,8 @@ document.addEventListener("DOMContentLoaded", function () {
             role: "assistant",
             content: saludo
         });
+        
+        hablarTexto(saludo);
     }
 
     async function obtenerRespuestaDelAgente(mensajeUsuario, historial) {
@@ -332,6 +600,8 @@ document.addEventListener("DOMContentLoaded", function () {
                     parrafo.textContent = fragmento;
                     areaConversacion.scrollTop = areaConversacion.scrollHeight;
                 });
+
+                hablarTexto(parrafo.textContent);
 
                 if (bufferMensajes.length >= LIMITE_BUFFER * 2) {
                     const mensajesAComprimir = bufferMensajes.slice(0, LIMITE_BUFFER);

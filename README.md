@@ -10,10 +10,8 @@ El proyecto consiste en una aplicación web autocontenida desarrollada con **HTM
 
 ### Requisitos previos
 - Un navegador web moderno: **Google Chrome** o **Microsoft Edge** (recomendado para máxima compatibilidad)
-- Una API Key válida de:
-  - **Groq** (https://console.groq.com)
-  - **Google Gemini** (https://makersuite.google.com/app/apikey)
-- Conexión a Internet
+- Una API Key válida de **Groq** (https://console.groq.com)
+- Conexión a Internet (necesaria para el LLM y para la síntesis de voz con ResponsiveVoice)
 
 ### Pasos para ejecutar:
 
@@ -133,11 +131,36 @@ Esta aplicación ha sido diseñada **pensando especialmente en adultos mayores**
 
 ## 🔧 Requisitos técnicos
 
-- HTML5
-- CSS3
-- JavaScript ES6+
+- HTML5 / CSS3 / JavaScript ES6+ (sin frameworks)
 - Sin necesidad de Node.js, npm o Python
-- Funciona offline después de cargar (excepto para las llamadas a la API de IA)
+- Conexión a Internet para el LLM (Groq) y para la voz (ResponsiveVoice CDN)
+
+---
+
+## 🎙️ Sistema de voz
+
+La aplicación usa **dos capas de voz** complementarias:
+
+### Síntesis de voz (TTS — el agente habla)
+- **Principal:** [ResponsiveVoice.js](https://responsivevoice.org/) — voz **"Spanish Latin American Male"**, cálida y con acento latinoamericano neutro. Adecuada para el avatar y para adultos mayores colombianos.
+- **Fallback automático:** Si no hay conexión o ResponsiveVoice falla, se usa la Web Speech API nativa del navegador con `lang: es-CO`.
+- **Velocidad adaptativa:** la voz ajusta su ritmo y tono automáticamente según el contenido emocional del texto:
+  - Tristeza / duelo → más lento y suave (`rate 0.72`)
+  - Confusión / olvido → pausado y claro (`rate 0.75`)
+  - Nostalgia → cálido y pausado (`rate 0.80`)
+  - Tono por defecto → respetuoso (`rate 0.85`)
+  - Alegría / celebración → un poco más vivo (`rate 0.92`)
+
+### Reconocimiento de voz (STT — el usuario habla)
+- Usa la **Web Speech API** del navegador (compatible con Chrome y Edge).
+- Modo continuo: no se corta por pausas largas (pensado para el ritmo de adultos mayores).
+- **Detección automática de fin de habla:** si el usuario hace silencio por 3 segundos, el mensaje se envía directamente al agente sin necesidad de presionar "Enviar".
+- El botón cambia a **🛑 Parar grabación** mientras escucha, y vuelve a **🎤 Hablar** al terminar.
+
+### Controles de audio
+- **⏸ Pausa / ▶ Reanudar:** detiene y reanuda la voz del agente en cualquier momento.
+- Activar el micrófono cancela automáticamente la voz del agente para evitar interferencias.
+- Los botones de respuesta rápida también cancelan la voz antes de enviar.
 
 ---
 
@@ -169,32 +192,38 @@ sia-reminiscencia-grupo1/
 - Despliegue en GitHub Pages
 - Justificación de decisiones en el informe
 
-### Rol 3: Procesamiento de voz (futuro)
-- Reconocimiento de voz (Web Speech API)
-- Síntesis de voz (TTS)
-- Pausas y controles de audio
+### Rol 3: Interacción por voz y flujos conversacionales
+- Reconocimiento de voz continuo con Web Speech API (`es-CO`)
+- Síntesis de voz con ResponsiveVoice.js (voz latinoamericana cálida) + fallback nativo
+- Velocidad adaptativa según emoción detectada en el texto del agente
+- Detección automática de fin de habla (pausa de 3 s → auto-envío)
+- Botones de respuesta rápida con envío directo al agente
+- Botón ⏸ Pausa / ▶ Reanudar compatible con ambas APIs de voz
 
-### Rol 4: Persistencia y datos (futuro)
-- Almacenamiento de sesiones
-- Exportación de conversaciones
-- Base de datos local
+### Rol 4: Identidad visual y diseño emocional
+- Avatar CSS animado con 4 estados emocionales (neutral, alegre, triste, sorprendido)
+- Sincronización de emociones con el contenido del agente
+- Animaciones de parpadeo, movimiento de pupilas y seguimiento del mouse
 
-### Rol 5: Prompt engineering y personalidad (futuro)
-- Diseño final del system prompt
-- Personalidad y tono del agente
-- Validación de respuestas empáticas
+### Rol 5: Prompt engineering y personalidad
+- Prompt del sistema con personalidad cálida y empática
+- Lenguaje adaptado al contexto colombiano ("Don", "Doña")
+- Estrategias de continuidad relacional y construcción de vínculo
 
 ---
 
-## 🚀 Próximos pasos
+## ✅ Estado del proyecto
 
-- [ ] Integración de Web Speech API para entrada/salida de voz
-- [ ] Persistencia de sesiones con IndexedDB
-- [ ] Exportación de conversaciones en PDF
-- [ ] Validación de respuestas empáticas
-- [ ] Pruebas con adultos mayores reales
+- [x] Interfaz accesible para adultos mayores
+- [x] Conexión al LLM (Groq) con streaming en tiempo real
+- [x] Memoria híbrida (buffer + resumen automático)
+- [x] Reconocimiento de voz continuo con auto-envío
+- [x] Síntesis de voz con ResponsiveVoice (voz latinoamericana cálida)
+- [x] Capacidad adaptativa de ritmo y tono
+- [x] Botones de respuesta rápida
+- [x] Avatar con 4 estados emocionales
 - [ ] Despliegue en GitHub Pages
-- [ ] Documentación de arquitectura con diagramas
+- [ ] Documentación de arquitectura con diagramas (informe)
 
 ---
 
