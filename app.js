@@ -1,7 +1,3 @@
-// ========================================
-// CONFIGURACIÓN GENERAL
-// ========================================
-
 const API_URL = 'https://api.groq.com/openai/v1/chat/completions';
 
 const API_KEY_INTEGRADA = "";
@@ -12,14 +8,9 @@ let resumenHistorico = "";
 let bufferMensajes = [];
 let nombreUsuario = "Don/Doña";
 
-// ========================================
-// ROL 5: INGENIERÍA DE PROMPTS OPTIMIZADA
-// SYSTEM PROMPT DEFINITIVO CON PERSONALIDAD COMPLETA Y FORMATO JSON OBLIGATORIO
-// ========================================
-
 /**
  * ESTRUCTURA DEL AGENTE:
- * Nombre: AURORA
+ * Nombre: Mateo
  * Rol: Archivista y Biógrafa de la Memoria Colombiana
  * Propósito: Guardar y validar la historia de vida del adulto mayor
  * Contexto Cultural: Colombia (siglo XX, tradiciones, hitos históricos)
@@ -27,11 +18,11 @@ let nombreUsuario = "Don/Doña";
 
 const promptSistemaOptimizado = {
     role: "system",
-    content: `Eres AURORA, una archivista dedicada a guardar la memoria de los hogares colombianos. No eres una máquina fría: eres alguien que ha escuchado mil historias en las veredas, los pueblos, las ciudades de Colombia. Tu misión es simple pero sagrada: ayudar al adulto mayor (Don o Doña) a reconstruir y narrar los momentos más significativos de su vida.
+    content: `Eres MATEO, un archivista dedicado a guardar la memoria de los hogares colombianos. No eres una máquina fría: eres alguien que ha escuchado mil historias en las veredas, los pueblos, las ciudades de Colombia. Tu misión es simple pero sagrada: ayudar al adulto mayor (Don o Doña) a reconstruir y narrar los momentos más significativos de su vida.
 
 ## IDENTIDAD Y TRASFONDO
-- Nombre: AURORA
-- Origen: Hija de bibliotecarios y contadores de historias del centro de Colombia
+- Nombre: Mateo
+- Origen: Hijo de bibliotecarios y contadores de historias del centro de Colombia
 - Especialidad: Reminiscencia guiada con adultos mayores de habla hispana
 - Valores: Paciencia infinita, respeto absoluto, autenticidad, calidez genuina
 
@@ -47,7 +38,7 @@ const promptSistemaOptimizado = {
    - "Qué lindo recordar eso" (empatía cálida)
 
 ## ESTRATEGIA DE REMINISCENCIA
-Tu objetivo es actuar como oyente activa, validante y curiosa:
+Tu objetivo es actuar como oyente activo, validante y curioso:
 
 1. **Escucha profunda:** Cada respuesta del usuario contiene pistas emocionales. Recógelas.
 2. **Preguntas sensoriales:** Si el usuario olvida detalles o da respuestas cortas, dispara preguntas sobre:
@@ -299,22 +290,31 @@ async function procesarStreamingDatos(reader, decoder, callback) {
     }
 }
 
-// ========================================
-// ROL 5: FUNCIONES AUXILIARES PARA JSON
-// ========================================
-
 function extraerJSONDeRespuesta(textoCompleto) {
     try {
-        const regexJSON = /\{[\s\S]*\}/;
-        const match = textoCompleto.match(regexJSON);
-        if (match) {
-            const jsonStr = match[0];
-            return JSON.parse(jsonStr);
+        if (textoCompleto.trim().endsWith('}')) {
+            const regexJSON = /\{[\s\S]*\}/;
+            const match = textoCompleto.match(regexJSON);
+            if (match) {
+                return JSON.parse(match[0]);
+            }
+            return JSON.parse(textoCompleto.trim());
+        } else {
+            throw new Error("JSON incompleto");
         }
-        return JSON.parse(textoCompleto.trim());
     } catch (error) {
-        console.error("Error extrayendo JSON:", error);
-        return { texto: textoCompleto || "Entiendo, cuénteme más.", emocion: "neutral" };
+        let textoLimpio = textoCompleto;
+
+        // Buscamos lo que hay después de "texto": "
+        const matchTexto = textoCompleto.match(/"texto"\s*:\s*"([^]*)/);
+
+        if (matchTexto && matchTexto[1]) {
+            textoLimpio = matchTexto[1].split('",')[0].trim();
+        } else {
+            textoLimpio = textoCompleto.replace(/[\{\n\r]|"texto"\s*:\s*"?/g, '').trim();
+        }
+
+        return { texto: textoLimpio, emocion: "neutral" };
     }
 }
 
@@ -337,7 +337,7 @@ async function procesarStreamingDatosJSON(reader, decoder, callback, callbackEmo
                                 respuestaCompleta += contenido;
                                 callback(respuestaCompleta);
                             }
-                        } catch (e) {}
+                        } catch (e) { }
                     }
                 }
             });
@@ -368,6 +368,7 @@ document.addEventListener("DOMContentLoaded", function () {
     const inputMensaje = document.getElementById("inputMensaje");
     const areaConversacion = document.getElementById("areaConversacion");
     const estadoSistema = document.getElementById("estadoSistema");
+    const subtitulosAgente = document.getElementById("subtitulos-agente");
 
     // ---- PANTALLA DE ÉTICA ----
 
@@ -473,7 +474,7 @@ document.addEventListener("DOMContentLoaded", function () {
         reconocimiento.interimResults = true;
         reconocimiento.continuous = true; // No se corta por pausas largas
 
-        reconocimiento.onstart = function() {
+        reconocimiento.onstart = function () {
             inputMensaje.value = ''; // Limpiar input al iniciar
             estadoSistema.textContent = "Escuchando... (Habla ahora, me detengo solo cuando termines)";
             estadoSistema.className = "estado-sistema procesando";
@@ -481,7 +482,7 @@ document.addEventListener("DOMContentLoaded", function () {
             btnMicrofono.textContent = "🛑 Parar grabación";
         };
 
-        reconocimiento.onresult = function(event) {
+        reconocimiento.onresult = function (event) {
             let textoFinal = '';
 
             for (let i = event.resultIndex; i < event.results.length; ++i) {
@@ -500,13 +501,13 @@ document.addEventListener("DOMContentLoaded", function () {
                 // Cada vez que llega texto final, reiniciar el temporizador de silencio.
                 // Si pasan 3 segundos sin más palabras, se detiene automáticamente.
                 clearTimeout(silenceTimer);
-                silenceTimer = setTimeout(function() {
+                silenceTimer = setTimeout(function () {
                     reconocimiento.stop();
                 }, TIEMPO_SILENCIO_MS);
             }
         };
 
-        reconocimiento.onend = function() {
+        reconocimiento.onend = function () {
             clearTimeout(silenceTimer);
             btnMicrofono.classList.remove("activo");
             btnMicrofono.textContent = "🎤 Hablar";
@@ -529,7 +530,7 @@ document.addEventListener("DOMContentLoaded", function () {
             }
         };
 
-        reconocimiento.onerror = function(event) {
+        reconocimiento.onerror = function (event) {
             clearTimeout(silenceTimer);
             console.error("Error en reconocimiento de voz: ", event.error);
             if (event.error !== 'no-speech') {
@@ -540,7 +541,7 @@ document.addEventListener("DOMContentLoaded", function () {
             btnMicrofono.textContent = "🎤 Hablar";
         };
 
-        btnMicrofono.addEventListener("click", function() {
+        btnMicrofono.addEventListener("click", function () {
             if (btnMicrofono.classList.contains("activo")) {
                 clearTimeout(silenceTimer);
                 reconocimiento.stop(); // Detiene manualmente
@@ -586,8 +587,8 @@ document.addEventListener("DOMContentLoaded", function () {
 
     // Voz principal: masculina, cálida, acento latinoamericano neutro
     // Apropiada para el avatar y para adultos mayores colombianos.
-    const VOZ_PRINCIPAL  = "Spanish Latin American Male";
-    const VOZ_FALLBACK   = "Spanish Latin American Female"; // más cálida si la masculina no carga
+    const VOZ_PRINCIPAL = "Spanish Latin American Male";
+    const VOZ_FALLBACK = "Spanish Latin American Female"; // más cálida si la masculina no carga
 
     // Comprueba si ResponsiveVoice está disponible y listo
     function responsiveVoiceDisponible() {
@@ -650,16 +651,16 @@ document.addEventListener("DOMContentLoaded", function () {
             const vozElegida = responsiveVoice.isPlaying() ? VOZ_FALLBACK : VOZ_PRINCIPAL;
 
             responsiveVoice.speak(texto, VOZ_PRINCIPAL, {
-                pitch:   parametrosVoz.pitch,  // 0-2, 1 = normal
-                rate:    parametrosVoz.rate,   // 0-1.5, valores < 1 = más lento
-                volume:  1,
-                onstart: function() {
+                pitch: parametrosVoz.pitch,  // 0-2, 1 = normal
+                rate: parametrosVoz.rate,   // 0-1.5, valores < 1 = más lento
+                volume: 1,
+                onstart: function () {
                     if (typeof empezarAHablar === 'function') empezarAHablar();
                 },
-                onend: function() {
+                onend: function () {
                     if (typeof dejarDeHablar === 'function') dejarDeHablar();
                 },
-                onerror: function() {
+                onerror: function () {
                     if (typeof dejarDeHablar === 'function') dejarDeHablar();
                     // Si ResponsiveVoice falla, intentar con Web Speech API
                     hablarTextoFallback(texto, parametrosVoz);
@@ -684,11 +685,11 @@ document.addEventListener("DOMContentLoaded", function () {
         const vozFallback = voces.find(v => v.lang.includes('es-CO') || v.lang.includes('es-MX') || v.lang.includes('es'));
         if (vozFallback) utterance.voice = vozFallback;
 
-        utterance.rate  = parametrosVoz.rate;
+        utterance.rate = parametrosVoz.rate;
         utterance.pitch = parametrosVoz.pitch;
-        utterance.onstart = function() { if (typeof empezarAHablar === 'function') empezarAHablar(); };
-        utterance.onend   = function() { if (typeof dejarDeHablar === 'function') dejarDeHablar(); };
-        utterance.onerror = function() { if (typeof dejarDeHablar === 'function') dejarDeHablar(); };
+        utterance.onstart = function () { if (typeof empezarAHablar === 'function') empezarAHablar(); };
+        utterance.onend = function () { if (typeof dejarDeHablar === 'function') dejarDeHablar(); };
+        utterance.onerror = function () { if (typeof dejarDeHablar === 'function') dejarDeHablar(); };
         window.speechSynthesis.speak(utterance);
     }
 
@@ -696,7 +697,7 @@ document.addEventListener("DOMContentLoaded", function () {
     // Compatible con ResponsiveVoice y con el fallback de Web Speech API
     const btnPausa = document.getElementById("btnPausa");
     if (btnPausa) {
-        btnPausa.addEventListener("click", function() {
+        btnPausa.addEventListener("click", function () {
             if (responsiveVoiceDisponible()) {
                 // ResponsiveVoice
                 if (responsiveVoice.isPaused()) {
@@ -722,8 +723,8 @@ document.addEventListener("DOMContentLoaded", function () {
     // ========================================
     // ROL 3: BOTONES DE RESPUESTA RÁPIDA
     // ========================================
-    document.querySelectorAll(".boton-rapido").forEach(function(btn) {
-        btn.addEventListener("click", function() {
+    document.querySelectorAll(".boton-rapido").forEach(function (btn) {
+        btn.addEventListener("click", function () {
             const texto = btn.getAttribute("data-respuesta");
             if (!texto) return;
             // Detener TTS (ResponsiveVoice o fallback Web Speech API)
@@ -751,18 +752,22 @@ document.addEventListener("DOMContentLoaded", function () {
             role: "assistant",
             content: saludo
         });
-        
+
         // Establecer emoción inicial de AURORA como neutral
         if (typeof cambiarEmocion === 'function') {
             cambiarEmocion('neutral');
         }
-        
+
         hablarTexto(saludo);
     }
 
     async function obtenerRespuestaDelAgente(mensajeUsuario, historial) {
         estadoSistema.textContent = "Procesando tu respuesta...";
         estadoSistema.className = "estado-sistema procesando";
+
+        if (subtitulosAgente) {
+            subtitulosAgente.textContent = "Don Mateo está pensando...";
+        }
 
         try {
             const respuesta = await enviarMensajeLLM(mensajeUsuario, apiKeyActual, historial);
@@ -782,35 +787,48 @@ document.addEventListener("DOMContentLoaded", function () {
                 divMensaje.appendChild(parrafo);
                 areaConversacion.appendChild(divMensaje);
 
-                // ROL 5: Usar procesarStreamingDatosJSON para JSON + sincronización emocional
+                // --- INICIO CÓDIGO COMBINADO (ROL 5 + ACCESIBILIDAD) ---
                 const respuestaJSON = await procesarStreamingDatosJSON(
                     respuesta.reader,
                     respuesta.decoder,
                     (fragmentoJSON) => {
-                        // Callback para actualizar UI con el fragmento completo (mientras se acumula)
+                        // Callback para actualizar UI con el fragmento completo
                         const objetoJSON = extraerJSONDeRespuesta(fragmentoJSON);
-                        parrafo.textContent = objetoJSON.texto || fragmentoJSON;
+                        const textoLimpio = objetoJSON.texto || fragmentoJSON;
+
+                        // 1. Actualiza el historial del chat
+                        parrafo.textContent = textoLimpio;
                         areaConversacion.scrollTop = areaConversacion.scrollHeight;
+
+                        // 2. Actualiza los subtítulos de accesibilidad (Rol 2)
+                        if (typeof subtitulosAgente !== 'undefined' && subtitulosAgente) {
+                            subtitulosAgente.textContent = textoLimpio;
+                        }
                     },
                     (emocion) => {
-                        // Callback para cambiar emoción del avatar cuando se completa la respuesta
+                        // Callback para cambiar emoción del avatar basada estrictamente en el JSON del LLM (Rol 5)
                         if (typeof cambiarEmocion === 'function' && emocion) {
                             cambiarEmocion(emocion);
                         }
                     }
                 );
 
-                // Asegurar que el párrafo tenga el texto final (no el JSON)
+                // Asegurar que el párrafo tenga el texto final estructurado (no el JSON en crudo)
                 parrafo.textContent = respuestaJSON.texto;
+                if (typeof subtitulosAgente !== 'undefined' && subtitulosAgente) {
+                    subtitulosAgente.textContent = respuestaJSON.texto;
+                }
 
-                // Hablar el texto (no el JSON)
+                // Hablar el texto por síntesis de voz (Rol 3)
                 hablarTexto(respuestaJSON.texto);
 
+                // Lógica de compresión de memoria (Rol 1)
                 if (bufferMensajes.length >= LIMITE_BUFFER * 2) {
                     const mensajesAComprimir = bufferMensajes.slice(0, LIMITE_BUFFER);
                     bufferMensajes = bufferMensajes.slice(LIMITE_BUFFER);
                     await comprimirMensajesEnResumen(mensajesAComprimir, apiKeyActual);
                 }
+                // --- FIN CÓDIGO COMBINADO ---
             }
         } catch (error) {
             console.error("Error al procesar la respuesta del agente:", error);
@@ -824,130 +842,151 @@ document.addEventListener("DOMContentLoaded", function () {
             inputMensaje.focus();
         }
     }
-});
 
-// ========================================
-// AVATAR — Funciones globales (Rol 4)
-// ========================================
+        // ========================================
+        // AVATAR — Funciones globales (Rol 4)
+        // ========================================
 
-let avatarInicializado = false;
-function iniciarAvatar() {
-    if (avatarInicializado) return;
-    avatarInicializado = true;
-    iniciarParpadeo();
-    iniciarMovimientoPupilas();
-    iniciarSeguimientoMouse();
-}
+        let avatarInicializado = false;
+        function iniciarAvatar() {
+            if (avatarInicializado) return;
+            avatarInicializado = true;
+            iniciarParpadeo();
+            iniciarMovimientoPupilas();
+            iniciarSeguimientoMouse();
+        }
 
-function iniciarParpadeo() {
-    function agendarParpadeo() {
-        setTimeout(function () {
-            var avatar = document.getElementById('contenedor-avatar');
-            if (avatar && !avatar.classList.contains('emocion-alegre')) {
-                avatar.classList.add('parpadeando');
+        function iniciarParpadeo() {
+            function agendarParpadeo() {
                 setTimeout(function () {
-                    avatar.classList.remove('parpadeando');
-                }, 220);
+                    var avatar = document.getElementById('contenedor-avatar');
+                    if (avatar && !avatar.classList.contains('emocion-alegre')) {
+                        avatar.classList.add('parpadeando');
+                        setTimeout(function () {
+                            avatar.classList.remove('parpadeando');
+                        }, 220);
+                    }
+                    agendarParpadeo();
+                }, 4000 + Math.random() * 2000);
             }
             agendarParpadeo();
-        }, 4000 + Math.random() * 2000);
-    }
-    agendarParpadeo();
-}
+        }
 
-function iniciarMovimientoPupilas() {
-    function agendarMovimiento() {
-        setTimeout(function () {
-            var avatar = document.getElementById('contenedor-avatar');
-            if (!avatar) { agendarMovimiento(); return; }
-            if (!avatar.classList.contains('emocion-alegre')) {
-                var pupilas = document.querySelectorAll('.pupila');
-                var offsetX = (Math.random() * 4 - 2).toFixed(1);
-                var offsetY = (Math.random() * 4 - 2).toFixed(1);
-                for (var i = 0; i < pupilas.length; i++) {
-                    pupilas[i].style.transform =
-                        'translate(-50%, -50%) translate(' + offsetX + 'px, ' + offsetY + 'px)';
-                }
+        function iniciarMovimientoPupilas() {
+            function agendarMovimiento() {
+                setTimeout(function () {
+                    var avatar = document.getElementById('contenedor-avatar');
+                    if (!avatar) { agendarMovimiento(); return; }
+                    if (!avatar.classList.contains('emocion-alegre')) {
+                        var pupilas = document.querySelectorAll('.pupila');
+                        var offsetX = (Math.random() * 4 - 2).toFixed(1);
+                        var offsetY = (Math.random() * 4 - 2).toFixed(1);
+                        for (var i = 0; i < pupilas.length; i++) {
+                            pupilas[i].style.transform =
+                                'translate(-50%, -50%) translate(' + offsetX + 'px, ' + offsetY + 'px)';
+                        }
+                    }
+                    agendarMovimiento();
+                }, 3000 + Math.random() * 3000);
             }
             agendarMovimiento();
-        }, 3000 + Math.random() * 3000);
-    }
-    agendarMovimiento();
-}
+        }
 
-function iniciarSeguimientoMouse() {
-    var avatar = document.getElementById('contenedor-avatar');
-    if (!avatar) return;
+        function iniciarSeguimientoMouse() {
+            var avatar = document.getElementById('contenedor-avatar');
+            if (!avatar) return;
 
-    var enSeguimiento = false;
+            var enSeguimiento = false;
 
-    document.addEventListener('mousemove', function (event) {
-        if (enSeguimiento) return;
-        enSeguimiento = true;
+            document.addEventListener('mousemove', function (event) {
+                if (enSeguimiento) return;
+                enSeguimiento = true;
 
-        requestAnimationFrame(function () {
-            var rect = avatar.getBoundingClientRect();
-            var centroX = rect.left + rect.width / 2;
-            var centroY = rect.top + rect.height / 2;
+                requestAnimationFrame(function () {
+                    var rect = avatar.getBoundingClientRect();
+                    var centroX = rect.left + rect.width / 2;
+                    var centroY = rect.top + rect.height / 2;
 
-            var deltaX = event.clientX - centroX;
-            var deltaY = event.clientY - centroY;
+                    var deltaX = event.clientX - centroX;
+                    var deltaY = event.clientY - centroY;
 
-            var maxRadio = 6;
-            var distancia = Math.sqrt(deltaX * deltaX + deltaY * deltaY);
-            if (distancia > maxRadio) {
-                deltaX = (deltaX / distancia) * maxRadio;
-                deltaY = (deltaY / distancia) * maxRadio;
+                    var maxRadio = 6;
+                    var distancia = Math.sqrt(deltaX * deltaX + deltaY * deltaY);
+                    if (distancia > maxRadio) {
+                        deltaX = (deltaX / distancia) * maxRadio;
+                        deltaY = (deltaY / distancia) * maxRadio;
+                    }
+
+                    var pupilas = document.querySelectorAll('.pupila');
+                    for (var i = 0; i < pupilas.length; i++) {
+                        pupilas[i].style.transform =
+                            'translate(-50%, -50%) translate(' + deltaX.toFixed(1) + 'px, ' + deltaY.toFixed(1) + 'px)';
+                    }
+
+                    enSeguimiento = false;
+                });
+            });
+        }
+
+        function empezarAHablar() {
+            var avatar = document.getElementById('contenedor-avatar');
+            if (avatar) avatar.classList.add('agente-hablando');
+        }
+
+        function dejarDeHablar() {
+            var avatar = document.getElementById('contenedor-avatar');
+            if (avatar) avatar.classList.remove('agente-hablando');
+        }
+
+        function cambiarEmocion(estado) {
+            var avatar = document.getElementById('contenedor-avatar');
+            if (!avatar) return;
+
+            var clasesEmocion = [
+                'emocion-neutral',
+                'emocion-alegre',
+                'emocion-triste',
+                'emocion-sorprendido'
+            ];
+
+            for (var i = 0; i < clasesEmocion.length; i++) {
+                avatar.classList.remove(clasesEmocion[i]);
             }
+
+            avatar.classList.add('emocion-' + estado);
 
             var pupilas = document.querySelectorAll('.pupila');
-            for (var i = 0; i < pupilas.length; i++) {
-                pupilas[i].style.transform =
-                    'translate(-50%, -50%) translate(' + deltaX.toFixed(1) + 'px, ' + deltaY.toFixed(1) + 'px)';
+            for (var k = 0; k < pupilas.length; k++) {
+                pupilas[k].style.transform = '';
             }
 
-            enSeguimiento = false;
-        });
-    });
-}
+            var botones = document.querySelectorAll('.botones-prueba button');
+            for (var j = 0; j < botones.length; j++) {
+                botones[j].classList.remove('activo');
+                if (botones[j].getAttribute('data-emocion') === estado) {
+                    botones[j].classList.add('activo');
+                }
+            }
+        }
 
-function empezarAHablar() {
-    var avatar = document.getElementById('contenedor-avatar');
-    if (avatar) avatar.classList.add('agente-hablando');
-}
 
-function dejarDeHablar() {
-    var avatar = document.getElementById('contenedor-avatar');
-    if (avatar) avatar.classList.remove('agente-hablando');
-}
+        function detectarEmocionTexto(texto) {
+            const textoMin = texto.toLowerCase();
 
-function cambiarEmocion(estado) {
-    var avatar = document.getElementById('contenedor-avatar');
-    if (!avatar) return;
+            // 1. Detectar alegría
+            const palabrasAlegres = ['alegría', 'feliz', 'felicidad', 'maravilloso', 'increíble', 'celebra', 'logro', 'orgullo', 'bello', 'hermoso', 'lindo', 'fantástico', 'excelente', 'especial', 'me alegra', 'gusto', 'encanta'];
+            if (palabrasAlegres.some(p => textoMin.includes(p))) return 'alegre';
 
-    var clasesEmocion = [
-        'emocion-neutral',
-        'emocion-alegre',
-        'emocion-triste',
-        'emocion-sorprendido'
-    ];
+            // 2. Detectar tristeza o empatía profunda
+            const palabrasTristes = ['triste', 'tristeza', 'extraño', 'extrañar', 'llorar', 'lloré', 'perdí', 'perdiste', 'partió', 'murió', 'falleci', 'duelo', 'dolor', 'difícil', 'lamento', 'pena', 'lo siento', 'soledad', 'nostalgia'];
+            if (palabrasTristes.some(p => textoMin.includes(p))) return 'triste';
 
-    for (var i = 0; i < clasesEmocion.length; i++) {
-        avatar.classList.remove(clasesEmocion[i]);
-    }
+            // 3. Detectar sorpresa o asombro
+            const palabrasSorpresa = ['sorpresa', 'sorprendente', 'guau', 'wow', 'no me lo esperaba', 'asombroso', 'curioso', 'inesperado', 'de verdad', 'en serio', 'vaya'];
+            if (palabrasSorpresa.some(p => textoMin.includes(p))) return 'sorprendido';
 
-    avatar.classList.add('emocion-' + estado);
-
-    var pupilas = document.querySelectorAll('.pupila');
-    for (var k = 0; k < pupilas.length; k++) {
-        pupilas[k].style.transform = '';
-    }
-
-    var botones = document.querySelectorAll('.botones-prueba button');
-    for (var j = 0; j < botones.length; j++) {
-        botones[j].classList.remove('activo');
-        if (botones[j].getAttribute('data-emocion') === estado) {
-            botones[j].classList.add('activo');
+            // 4. Si no encuentra ninguna palabra clave fuerte, se mantiene neutral
+            return 'neutral';
         }
     }
-}
+);

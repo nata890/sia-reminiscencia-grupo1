@@ -493,7 +493,7 @@ label {
     align-items: center;
     justify-content: space-between;
     overflow: hidden;
-    padding: 25px 20px;
+    padding: 20px;
     box-sizing: border-box;
     background-color: #FDFBF7;
     border-right: 3px solid #C69320;
@@ -774,8 +774,8 @@ label {
    ============================================ */
 
 #contenedor-avatar {
-    width: 300px;
-    height: 300px;
+    width: 320px;
+    height: 320px;
     border-radius: 50%;
     background: #C8E6C9;
     display: flex;
@@ -1198,8 +1198,8 @@ label {
 #subtitulos-agente {
     width: 90%;
     max-width: 500px;
-    height: 120px;
-    overflow-y: auto;
+    height: auto;
+    min-height: 150px;
     background-color: #ffffff;
     border: 1px solid #0B2545;
     border-radius: 8px;
@@ -1212,6 +1212,9 @@ label {
     word-wrap: break-word;
     margin-top: 10px;
     margin-bottom: 10px;
+    max-height: 150px; /* Puedes ajustar este número (ej. 120px o 200px) según como se vea mejor en tu pantalla */
+    overflow-y: auto; 
+    word-wrap: break-word;
 }
 
 /* --- BOTONES DE PRUEBA --- */
